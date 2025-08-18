@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>You Are My Friend - Movie Trailer Experience</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Montserrat:wght@300;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background: linear-gradient(135deg, #0c0c0c 0%, #1a1a2e 50%, #16213e 100%);
+            color: white;
+            overflow: hidden;
+            height: 100vh;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+
+        .stars {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                radial-gradient(2px 2px at 20px 30px, #eee, transparent),
+                radial-gradient(2px 2px at 40px 70px, rgba(255,255,255,0.8), transparent),
+                radial-gradient(1px 1px at 90px 40px, #fff, transparent),
+                radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.6), transparent),
+                radial-gradient(2px 2px at 160px 30px, #eee, transparent);
+            background-repeat: repeat;
+            background-size: 200px 100px;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.8; }
+            50% { opacity: 0.3; }
+        }
+
+        .start-screen {
+            z-index: 100;
+            opacity: 1;
+            transition: opacity 1s ease;
+        }
+
+        .start-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .start-button {
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24);
+            border: none;
+            color: white;
+            padding: 20px 40px;
+            font-size: 24px;
+            font-weight: 700;
+            border-radius: 50px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 10px 30px rgba(255, 107, 107, 0.4);
+            transition: all 0.3s ease;
+        }
+
+        .start-button:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(255, 107, 107, 0.6);
+        }
+
+        .animation-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            opacity: 0;
+        }
+
+        .text-element {
+            position: absolute;
+            opacity: 0;
+            transform: scale(0.5) translateY(50px);
+            text-shadow: 2px 2px 10px rgba(0,0,0,0.8);
+        }
+
+        .title-text {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(2rem, 8vw, 8rem);
+            font-weight: 700;
+            background: linear-gradient(45deg, #ffd700, #ffed4a, #f39c12);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+            line-height: 1.2;
+        }
+
+        .subtitle-text {
+            font-size: clamp(1rem, 3vw, 3rem);
+            font-weight: 300;
+            color: #e0e0e0;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+        }
+
+        .name-text {
+            font-family: 'Cinzel', serif;
+            font-size: clamp(3rem, 12vw, 12rem);
+            font-weight: 700;
+            background: linear-gradient(45deg, #ff6b6b, #ee5a24, #ffd700);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-align: center;
+        }
+
+        .final-text {
+            font-size: clamp(1.5rem, 4vw, 4rem);
+            font-weight: 700;
+            color: #ffd700;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+        }
+
+        /* Animation keyframes */
+        @keyframes fadeInScale {
+            to {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateX(-100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                opacity: 0;
+                transform: translateX(100px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        @keyframes zoomIn {
+            from {
+                opacity: 0;
+                transform: scale(0.3);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        @keyframes glow {
+            0%, 100% {
+                text-shadow: 2px 2px 10px rgba(0,0,0,0.8), 0 0 20px rgba(255, 215, 0, 0.5);
+            }
+            50% {
+                text-shadow: 2px 2px 10px rgba(0,0,0,0.8), 0 0 40px rgba(255, 215, 0, 0.8);
+            }
+        }
+
+        @keyframes fadeOut {
+            from {
+                opacity: 1;
+                transform: scale(1);
+            }
+            to {
+                opacity: 0;
+                transform: scale(0.9);
+            }
+        }
+
+        @keyframes confettiFall {
+            0% {
+                transform: translateY(-100vh) rotate(0deg);
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(100vh) rotate(360deg);
+                opacity: 0;
+            }
+        }
+
+        .confetti {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background: #ffd700;
+            animation: confettiFall 3s linear infinite;
+        }
+
+        .confetti:nth-child(odd) {
+            background: #ff6b6b;
+            width: 8px;
+            height: 8px;
+            animation-duration: 2.5s;
+        }
+
+        .confetti:nth-child(3n) {
+            background: #4ecdc4;
+            width: 6px;
+            height: 12px;
+            animation-duration: 3.5s;
+        }
+
+        .confetti:nth-child(4n) {
+            background: #45b7d1;
+            width: 12px;
+            height: 6px;
+            animation-duration: 2.8s;
+        }
+
+        .confetti:nth-child(5n) {
+            background: #96ceb4;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            animation-duration: 3.2s;
+        }
+
+        .light-rays {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 2px;
+            height: 100%;
+            background: linear-gradient(to bottom, transparent, rgba(255,255,255,0.1), transparent);
+            opacity: 0;
+            transform-origin: center top;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            .start-button {
+                padding: 15px 30px;
+                font-size: 18px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="stars"></div>
+    
+    <div class="container">
+        <div class="start-screen" id="startScreen">
+            <h1 style="font-family: 'Cinzel', serif; font-size: 3rem; margin-bottom: 2rem; background: linear-gradient(45deg, #ffd700, #ffed4a); -webkit-background-clip: text; -webkit-text-fill-color: transparent;">
+                You Are My Friend
+            </h1>
+            <p style="font-size: 1.2rem; margin-bottom: 2rem; opacity: 0.8;">
+                A tribute to the classic Flash experience
+            </p>
+            <button class="start-button" id="startButton">Begin Experience</button>
+        </div>
+
+        <div class="animation-container" id="animationContainer">
+            <!-- Light rays for dramatic effect -->
+            <div class="light-rays" style="transform: translate(-50%, -50%) rotate(45deg);"></div>
+            <div class="light-rays" style="transform: translate(-50%, -50%) rotate(-45deg);"></div>
+            <div class="light-rays" style="transform: translate(-50%, -50%) rotate(90deg);"></div>
+            
+            <!-- Animation sequence elements -->
+            <div class="text-element subtitle-text" id="text1">In a world...</div>
+            <div class="text-element subtitle-text" id="text2">Where friendship matters...</div>
+            <div class="text-element title-text" id="text3">One person</div>
+            <div class="text-element subtitle-text" id="text4">Stands above the rest...</div>
+            <div class="text-element name-text" id="nameText">DAVID</div>
+            <div class="text-element final-text" id="text5">You Are My Friend</div>
+            <div class="text-element final-text" id="birthdayText" style="margin-top: 80px; font-size: clamp(1.2rem, 3vw, 3rem); color: #ff6b6b;">Happy Birthday!</div>
+        </div>
+    </div>
+
+    <!-- Audio element for background music -->
+    <audio id="bgMusic" loop preload="auto">
+        <source src="https://github.com/jc-sumo/youaremyfriend/raw/refs/heads/main/youaremyfriend.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+    </audio>
+
+    <script>
+        let animationStarted = false;
+        
+        function extractNameFromURL() {
+            const hostname = window.location.hostname;
+            const parts = hostname.split('.');
+            
+            // Check if it's a subdomain pattern like "john.youraremyfriend.com"
+            if (parts.length >= 3 && parts[0] !== 'www') {
+                return parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
+            }
+            
+            // Fallback: check for URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const nameParam = urlParams.get('name');
+            if (nameParam) {
+                return nameParam.charAt(0).toUpperCase() + nameParam.slice(1).toLowerCase();
+            }
+            
+            // Default fallback
+            return 'David';
+        }
+
+        function startAnimation() {
+            if (animationStarted) return;
+            animationStarted = true;
+
+            const startScreen = document.getElementById('startScreen');
+            const animationContainer = document.getElementById('animationContainer');
+            const nameElement = document.getElementById('nameText');
+            const bgMusic = document.getElementById('bgMusic');
+
+            // Set the extracted name
+            const userName = extractNameFromURL();
+            nameElement.textContent = userName;
+
+            // Hide start screen
+            startScreen.classList.add('hidden');
+            
+            // Show animation container
+            animationContainer.style.opacity = '1';
+
+            // Try to play background music (will only work if user has interacted)
+            console.log('Attempting to play audio...');
+            
+            // Check if audio element loaded properly
+            bgMusic.addEventListener('loadstart', () => console.log('Audio load started'));
+            bgMusic.addEventListener('canplay', () => console.log('Audio can play'));
+            bgMusic.addEventListener('error', (e) => console.log('Audio error:', e));
+            bgMusic.addEventListener('loadeddata', () => console.log('Audio data loaded'));
+            
+            try {
+                bgMusic.volume = 0.7; // Set volume to 70%
+                console.log('Audio volume set to:', bgMusic.volume);
+                console.log('Audio ready state:', bgMusic.readyState);
+                console.log('Audio source:', bgMusic.currentSrc);
+                
+                const playPromise = bgMusic.play();
+                
+                if (playPromise !== undefined) {
+                    playPromise.then(() => {
+                        console.log('Audio started successfully');
+                        console.log('Audio is playing:', !bgMusic.paused);
+                    }).catch(error => {
+                        console.log('Audio autoplay prevented:', error);
+                        // Show a small notification that audio failed
+                        showAudioMessage();
+                    });
+                }
+            } catch (e) {
+                console.log('Audio not available:', e);
+                showAudioMessage();
+            }
+
+            // Animation sequence with fade-outs
+            const sequence = [
+                { element: 'text1', showDelay: 500, hideDelay: 2200, animation: 'slideInLeft' },
+                { element: 'text2', showDelay: 2500, hideDelay: 4200, animation: 'slideInRight' },
+                { element: 'text3', showDelay: 4500, hideDelay: 6200, animation: 'zoomIn' },
+                { element: 'text4', showDelay: 6500, hideDelay: 8200, animation: 'slideInLeft' },
+                { element: 'nameText', showDelay: 8500, hideDelay: null, animation: 'zoomIn' }, // Name stays
+                { element: 'text5', showDelay: 11000, hideDelay: null, animation: 'fadeInScale' }, // Final text stays
+                { element: 'birthdayText', showDelay: 13000, hideDelay: null, animation: 'zoomIn' } // Birthday text
+            ];
+
+            sequence.forEach(({ element, showDelay, hideDelay, animation }) => {
+                // Show element
+                setTimeout(() => {
+                    const el = document.getElementById(element);
+                    if (animation === 'slideInLeft') {
+                        el.style.animation = 'slideInLeft 1s ease forwards';
+                    } else if (animation === 'slideInRight') {
+                        el.style.animation = 'slideInRight 1s ease forwards';
+                    } else if (animation === 'zoomIn') {
+                        el.style.animation = 'zoomIn 1.5s ease forwards';
+                    } else if (animation === 'fadeInScale') {
+                        el.style.animation = 'fadeInScale 2s ease forwards, pulse 2s ease-in-out infinite 2s, glow 3s ease-in-out infinite 2s';
+                    }
+                }, showDelay);
+
+                // Hide element (if specified)
+                if (hideDelay) {
+                    setTimeout(() => {
+                        const el = document.getElementById(element);
+                        el.style.animation = 'fadeOut 0.8s ease forwards';
+                    }, hideDelay);
+                }
+            });
+
+            // Add light ray effects
+            setTimeout(() => {
+                const lightRays = document.querySelectorAll('.light-rays');
+                lightRays.forEach((ray, index) => {
+                    setTimeout(() => {
+                        ray.style.opacity = '1';
+                        ray.style.animation = 'fadeInScale 2s ease forwards';
+                    }, index * 200);
+                });
+            }, 8000);
+
+            // Add confetti after birthday text appears
+            setTimeout(() => {
+                createConfetti();
+            }, 13500);
+        }
+
+        function showAudioMessage() {
+            const message = document.createElement('div');
+            message.style.cssText = `
+                position: fixed; 
+                top: 20px; 
+                right: 20px; 
+                background: rgba(255,255,255,0.9); 
+                color: #333; 
+                padding: 10px 15px; 
+                border-radius: 5px; 
+                font-size: 14px; 
+                z-index: 1000;
+                cursor: pointer;
+            `;
+            message.textContent = 'Click here to enable audio';
+            message.onclick = () => {
+                const bgMusic = document.getElementById('bgMusic');
+                bgMusic.play().then(() => {
+                    message.remove();
+                }).catch(() => {
+                    message.textContent = 'Audio unavailable';
+                });
+            };
+            document.body.appendChild(message);
+            
+            setTimeout(() => {
+                if (message.parentNode) message.remove();
+            }, 10000);
+        }
+
+        function createConfetti() {
+            const container = document.querySelector('.container');
+            
+            // Create 50 confetti pieces
+            for (let i = 0; i < 50; i++) {
+                setTimeout(() => {
+                    const confetti = document.createElement('div');
+                    confetti.className = 'confetti';
+                    confetti.style.left = Math.random() * 100 + 'vw';
+                    confetti.style.animationDelay = Math.random() * 2 + 's';
+                    confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
+                    
+                    container.appendChild(confetti);
+                    
+                    // Remove confetti after animation
+                    setTimeout(() => {
+                        confetti.remove();
+                    }, 5000);
+                }, i * 100);
+            }
+        }
+
+        document.getElementById('startButton').addEventListener('click', startAnimation);
+
+        // Show the name that will be displayed
+        document.addEventListener('DOMContentLoaded', () => {
+            const userName = extractNameFromURL();
+            const startScreen = document.getElementById('startScreen');
+            
+            if (userName !== 'David') {
+                const namePreview = document.createElement('p');
+                namePreview.style.cssText = 'font-size: 1rem; margin-top: 1rem; opacity: 0.6; font-style: italic;';
+                namePreview.textContent = `Featuring: ${userName}`;
+                startScreen.appendChild(namePreview);
+            }
+        });
+
+        // Handle keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === ' ' || e.key === 'Enter') {
+                e.preventDefault();
+                startAnimation();
+            }
+        });
+    </script>
+</body>
+</html>
