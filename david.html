@@ -318,6 +318,12 @@
         let animationStarted = false;
         
         function extractNameFromURL() {
+            // For GitHub Pages deployment, using hardcoded name
+            // You can change this to any name you want
+            return 'David';
+            
+            // Original subdomain logic (commented out for GitHub Pages)
+            /*
             const hostname = window.location.hostname;
             const parts = hostname.split('.');
             
@@ -333,8 +339,8 @@
                 return nameParam.charAt(0).toUpperCase() + nameParam.slice(1).toLowerCase();
             }
             
-            // Default fallback
             return 'David';
+            */
         }
 
         function startAnimation() {
