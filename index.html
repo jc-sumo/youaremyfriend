@@ -340,6 +340,11 @@
             */
         }
 
+        function shouldShowBirthday() {
+            const urlParams = new URLSearchParams(window.location.search);
+            return urlParams.has('birthday');
+        }
+
         function startAnimation() {
             if (animationStarted) return;
             animationStarted = true;
@@ -392,15 +397,20 @@
             }
 
             // Animation sequence with fade-outs
+            const showBirthday = shouldShowBirthday();
             const sequence = [
                 { element: 'text1', showDelay: 500, hideDelay: 2200, animation: 'slideInLeft' },
                 { element: 'text2', showDelay: 2500, hideDelay: 4200, animation: 'slideInRight' },
                 { element: 'text3', showDelay: 4500, hideDelay: 6200, animation: 'zoomIn' },
                 { element: 'text4', showDelay: 6500, hideDelay: 8200, animation: 'slideInLeft' },
                 { element: 'nameText', showDelay: 8500, hideDelay: null, animation: 'zoomIn' }, // Name stays
-                { element: 'text5', showDelay: 11000, hideDelay: null, animation: 'fadeInScale' }, // Final text stays
-                { element: 'birthdayText', showDelay: 13000, hideDelay: null, animation: 'zoomIn' } // Birthday text
+                { element: 'text5', showDelay: 11000, hideDelay: null, animation: 'fadeInScale' } // Final text stays
             ];
+
+            // Add birthday text to sequence if birthday parameter is present
+            if (showBirthday) {
+                sequence.push({ element: 'birthdayText', showDelay: 13000, hideDelay: null, animation: 'zoomIn' });
+            }
 
             sequence.forEach(({ element, showDelay, hideDelay, animation }) => {
                 // Show element
@@ -437,10 +447,12 @@
                 });
             }, 8000);
 
-            // Add confetti after birthday text appears
-            setTimeout(() => {
-                createConfetti();
-            }, 13500);
+            // Add confetti after birthday text appears (only if birthday is shown)
+            if (showBirthday) {
+                setTimeout(() => {
+                    createConfetti();
+                }, 13500);
+            }
         }
 
         function showAudioMessage() {
