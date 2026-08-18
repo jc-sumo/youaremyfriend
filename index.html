@@ -297,6 +297,91 @@
             100% { transform: translate(0, -110vh) rotate(0deg); opacity: 0; }
         }
 
+        .deepdream-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 60;
+            opacity: 0;
+            mix-blend-mode: screen;
+            background-image: 
+                repeating-radial-gradient(circle at center, rgba(255, 0, 170, 0.35) 0px, rgba(255, 0, 170, 0.35) 3px, transparent 3px, transparent 45px),
+                repeating-radial-gradient(circle at center, rgba(0, 255, 200, 0.3) 0px, rgba(0, 255, 200, 0.3) 4px, transparent 4px, transparent 65px),
+                repeating-radial-gradient(circle at center, rgba(255, 220, 0, 0.25) 0px, rgba(255, 220, 0, 0.25) 2px, transparent 2px, transparent 30px);
+            background-size: 90px 90px, 140px 140px, 60px 60px;
+        }
+
+        .deepdream-overlay.active {
+            opacity: 1;
+            animation: deepdreamSwirl 2.6s ease-in-out forwards;
+        }
+
+        @keyframes deepdreamSwirl {
+            0%   { background-position: 0 0, 0 0, 0 0; filter: hue-rotate(0deg) blur(0px) saturate(1); }
+            50%  { background-position: 60px 40px, -50px 70px, 30px -60px; filter: hue-rotate(180deg) blur(1.5px) saturate(2.2); }
+            100% { background-position: 120px 90px, -100px 140px, 60px -120px; filter: hue-rotate(360deg) blur(0px) saturate(1); }
+        }
+
+        .dream-eye {
+            position: fixed;
+            font-size: 2.5rem;
+            pointer-events: none;
+            z-index: 61;
+            opacity: 0;
+            animation: dreamEyePop 2.6s ease-in-out forwards;
+        }
+
+        @keyframes dreamEyePop {
+            0%   { opacity: 0; transform: scale(0.3) rotate(0deg); }
+            20%  { opacity: 0.9; transform: scale(1.1) rotate(10deg); }
+            80%  { opacity: 0.9; transform: scale(1) rotate(-8deg); }
+            100% { opacity: 0; transform: scale(0.6) rotate(0deg); }
+        }
+
+        @keyframes screenShake {
+            0%, 100% { transform: translate(0, 0) rotate(0deg); }
+            10% { transform: translate(-6px, 4px) rotate(-0.3deg); }
+            20% { transform: translate(5px, -5px) rotate(0.3deg); }
+            30% { transform: translate(-4px, 6px); }
+            40% { transform: translate(6px, 3px) rotate(0.2deg); }
+            50% { transform: translate(-5px, -4px); }
+            60% { transform: translate(4px, 5px) rotate(-0.2deg); }
+            70% { transform: translate(-6px, -3px); }
+            80% { transform: translate(5px, -5px); }
+            90% { transform: translate(-3px, 4px); }
+        }
+
+        .shake {
+            animation: screenShake 0.35s linear infinite;
+        }
+
+        @keyframes screenShakeStrong {
+            0% { transform: scale(1) translate(0,0); }
+            15% { transform: scale(1.05) translate(-10px, 6px); }
+            30% { transform: scale(0.97) translate(8px, -8px); }
+            45% { transform: scale(1.03) translate(-6px, 5px); }
+            60% { transform: scale(0.99) translate(5px, -4px); }
+            100% { transform: scale(1) translate(0,0); }
+        }
+
+        .shake-strong {
+            animation: screenShakeStrong 0.4s ease-out;
+        }
+
+        .matrix-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 55;
+            opacity: 0;
+        }
+
         .light-rays {
             position: absolute;
             top: 50%;
@@ -348,6 +433,8 @@
         </div>
 
         <canvas id="fireworksCanvas" class="fireworks-canvas"></canvas>
+        <div id="deepdreamOverlay" class="deepdream-overlay"></div>
+        <canvas id="matrixCanvas" class="matrix-canvas"></canvas>
     </div>
 
     <!-- Audio element for background music -->
@@ -445,17 +532,27 @@
                 });
             }, 8000);
 
-            // Big finale: fireworks, confetti burst, and flying rainbows when
-            // "You Are My Friend" lands (matches text5's showDelay above)
+            // "The algorithm recognizes him" - DeepDream hallucination + shake,
+            // timed right as the name zooms in
             setTimeout(() => {
+                triggerDeepDream(2400);
+            }, 8500);
+
+            // Big finale: punch-shake, fireworks, confetti burst, and flying
+            // rainbows when "You Are My Friend" lands
+            setTimeout(() => {
+                const container = document.querySelector('.container');
+                container.classList.add('shake-strong');
+                setTimeout(() => container.classList.remove('shake-strong'), 400);
                 startClimaxEffects();
             }, 11000);
 
-            // Extra confetti + floating birthday cakes (only if ?birthday is set)
+            // Birthday-only extras: confetti, floating cakes, Matrix rain wall
             if (showBirthday) {
                 setTimeout(() => {
                     createConfetti(80);
                     createCakes(8);
+                    startMatrixRain(7000);
                 }, 13500);
             }
         }
@@ -517,6 +614,72 @@
                     setTimeout(() => cake.remove(), 8000);
                 }, i * 300);
             }
+        }
+
+        // ===== DeepDream hallucination + screen shake =====
+        function triggerDeepDream(durationMs) {
+            const overlay = document.getElementById('deepdreamOverlay');
+            overlay.classList.add('active');
+
+            const icons = ['👁️', '🐕', '🐶', '👁️'];
+            for (let i = 0; i < 10; i++) {
+                const eye = document.createElement('div');
+                eye.className = 'dream-eye';
+                eye.textContent = icons[Math.floor(Math.random() * icons.length)];
+                eye.style.left = Math.random() * 90 + 'vw';
+                eye.style.top = Math.random() * 90 + 'vh';
+                eye.style.animationDelay = (Math.random() * 0.4) + 's';
+                document.body.appendChild(eye);
+                setTimeout(() => eye.remove(), durationMs + 500);
+            }
+
+            document.querySelector('.container').classList.add('shake');
+
+            setTimeout(() => {
+                overlay.classList.remove('active');
+                document.querySelector('.container').classList.remove('shake');
+            }, durationMs);
+        }
+
+        // ===== Matrix-style "HAPPY BIRTHDAY" code rain =====
+        function startMatrixRain(durationMs) {
+            const canvas = document.getElementById('matrixCanvas');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            canvas.style.opacity = '1';
+            const ctx = canvas.getContext('2d');
+
+            const message = 'HAPPY BIRTHDAY ';
+            const fontSize = 18;
+            const columns = Math.floor(canvas.width / fontSize);
+            const drops = new Array(columns).fill(1);
+            const charIndex = new Array(columns).fill(0).map(() => Math.floor(Math.random() * message.length));
+
+            const matrixTimer = setInterval(() => {
+                ctx.fillStyle = 'rgba(12, 12, 12, 0.15)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+                ctx.fillStyle = '#3dff6e';
+                ctx.font = fontSize + 'px monospace';
+
+                for (let i = 0; i < drops.length; i++) {
+                    const char = message[charIndex[i] % message.length];
+                    ctx.fillText(char, i * fontSize, drops[i] * fontSize);
+                    charIndex[i]++;
+
+                    if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                        drops[i] = 0;
+                    }
+                    drops[i]++;
+                }
+            }, 50);
+
+            setTimeout(() => {
+                clearInterval(matrixTimer);
+                canvas.style.transition = 'opacity 1.5s ease';
+                canvas.style.opacity = '0';
+                setTimeout(() => ctx.clearRect(0, 0, canvas.width, canvas.height), 1600);
+            }, durationMs);
         }
 
         // ===== Big finale: fireworks + flying rainbows (Solitaire-style) =====
@@ -656,6 +819,11 @@
             if (canvas) {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
+            }
+            const matrixCanvas = document.getElementById('matrixCanvas');
+            if (matrixCanvas) {
+                matrixCanvas.width = window.innerWidth;
+                matrixCanvas.height = window.innerHeight;
             }
         });
     </script>
