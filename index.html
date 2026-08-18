@@ -278,6 +278,25 @@
             filter: drop-shadow(0 0 10px rgba(255,255,255,0.6));
         }
 
+        .cake-emoji {
+            position: fixed;
+            bottom: -100px;
+            left: 0;
+            font-size: 3.5rem;
+            pointer-events: none;
+            z-index: 42;
+            will-change: transform, opacity;
+            filter: drop-shadow(0 0 8px rgba(255,255,255,0.5));
+        }
+
+        @keyframes floatUp {
+            0%   { transform: translate(0, 0) rotate(0deg); opacity: 1; }
+            25%  { transform: translate(20px, -25vh) rotate(-8deg); }
+            50%  { transform: translate(-20px, -50vh) rotate(8deg); }
+            75%  { transform: translate(15px, -75vh) rotate(-6deg); }
+            100% { transform: translate(0, -110vh) rotate(0deg); opacity: 0; }
+        }
+
         .light-rays {
             position: absolute;
             top: 50%;
@@ -341,26 +360,12 @@
         let animationStarted = false;
         
         function extractNameFromURL() {
-            // Check for URL parameter first
             const urlParams = new URLSearchParams(window.location.search);
             const nameParam = urlParams.get('name');
             if (nameParam) {
                 return nameParam.charAt(0).toUpperCase() + nameParam.slice(1).toLowerCase();
             }
-            
-            // Default hardcoded name for GitHub Pages
             return 'David';
-            
-            // Original subdomain logic (commented out for GitHub Pages)
-            /*
-            const hostname = window.location.hostname;
-            const parts = hostname.split('.');
-            
-            // Check if it's a subdomain pattern like "john.youraremyfriend.com"
-            if (parts.length >= 3 && parts[0] !== 'www') {
-                return parts[0].charAt(0).toUpperCase() + parts[0].slice(1).toLowerCase();
-            }
-            */
         }
 
         function shouldShowBirthday() {
@@ -377,17 +382,12 @@
             const nameElement = document.getElementById('nameText');
             const bgMusic = document.getElementById('bgMusic');
 
-            // Set the extracted name
             const userName = extractNameFromURL();
             nameElement.textContent = userName;
 
-            // Hide start screen
             startScreen.classList.add('hidden');
-            
-            // Show animation container
             animationContainer.style.opacity = '1';
 
-            // Try to play background music (will only work if user has interacted)
             try {
                 bgMusic.volume = 0.7;
                 bgMusic.play().catch(error => {
@@ -399,24 +399,21 @@
                 showAudioMessage();
             }
 
-            // Animation sequence with fade-outs
             const showBirthday = shouldShowBirthday();
             const sequence = [
                 { element: 'text1', showDelay: 500, hideDelay: 2200, animation: 'slideInLeft' },
                 { element: 'text2', showDelay: 2500, hideDelay: 4200, animation: 'slideInRight' },
                 { element: 'text3', showDelay: 4500, hideDelay: 6200, animation: 'zoomIn' },
                 { element: 'text4', showDelay: 6500, hideDelay: 8200, animation: 'slideInLeft' },
-                { element: 'nameText', showDelay: 8500, hideDelay: null, animation: 'zoomIn' }, // Name stays
-                { element: 'text5', showDelay: 11000, hideDelay: null, animation: 'fadeInScale' } // Final text stays
+                { element: 'nameText', showDelay: 8500, hideDelay: null, animation: 'zoomIn' },
+                { element: 'text5', showDelay: 11000, hideDelay: null, animation: 'fadeInScale' }
             ];
 
-            // Add birthday text to sequence if birthday parameter is present
             if (showBirthday) {
                 sequence.push({ element: 'birthdayText', showDelay: 13000, hideDelay: null, animation: 'zoomIn' });
             }
 
             sequence.forEach(({ element, showDelay, hideDelay, animation }) => {
-                // Show element
                 setTimeout(() => {
                     const el = document.getElementById(element);
                     if (animation === 'slideInLeft') {
@@ -430,7 +427,6 @@
                     }
                 }, showDelay);
 
-                // Hide element (if specified)
                 if (hideDelay) {
                     setTimeout(() => {
                         const el = document.getElementById(element);
@@ -439,7 +435,6 @@
                 }
             });
 
-            // Add light ray effects
             setTimeout(() => {
                 const lightRays = document.querySelectorAll('.light-rays');
                 lightRays.forEach((ray, index) => {
@@ -456,10 +451,11 @@
                 startClimaxEffects();
             }, 11000);
 
-            // Add extra confetti after birthday text appears (only if birthday is shown)
+            // Extra confetti + floating birthday cakes (only if ?birthday is set)
             if (showBirthday) {
                 setTimeout(() => {
                     createConfetti(80);
+                    createCakes(8);
                 }, 13500);
             }
         }
@@ -496,8 +492,6 @@
 
         function createConfetti(count = 50) {
             const container = document.querySelector('.container');
-            
-            // Create confetti pieces
             for (let i = 0; i < count; i++) {
                 setTimeout(() => {
                     const confetti = document.createElement('div');
@@ -505,14 +499,23 @@
                     confetti.style.left = Math.random() * 100 + 'vw';
                     confetti.style.animationDelay = Math.random() * 2 + 's';
                     confetti.style.animationDuration = (Math.random() * 2 + 2) + 's';
-                    
                     container.appendChild(confetti);
-                    
-                    // Remove confetti after animation
-                    setTimeout(() => {
-                        confetti.remove();
-                    }, 5000);
+                    setTimeout(() => confetti.remove(), 5000);
                 }, i * 100);
+            }
+        }
+
+        function createCakes(count) {
+            for (let i = 0; i < count; i++) {
+                setTimeout(() => {
+                    const cake = document.createElement('div');
+                    cake.className = 'cake-emoji';
+                    cake.textContent = '🎂';
+                    cake.style.left = Math.random() * 90 + 'vw';
+                    cake.style.animation = `floatUp ${4 + Math.random() * 3}s ease-in forwards`;
+                    document.body.appendChild(cake);
+                    setTimeout(() => cake.remove(), 8000);
+                }, i * 300);
             }
         }
 
@@ -545,13 +548,12 @@
 
         function animateFireworks(ctx, canvas) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-
             fireworkParticles = fireworkParticles.filter(p => p.life > 0);
 
             fireworkParticles.forEach(p => {
                 p.x += p.vx;
                 p.y += p.vy;
-                p.vy += 0.04; // gravity
+                p.vy += 0.04;
                 p.life -= p.decay;
 
                 ctx.globalAlpha = Math.max(p.life, 0);
@@ -574,11 +576,7 @@
             animateFireworks(ctx, canvas);
             fireworksTimer = setInterval(() => launchFirework(ctx, canvas), 500);
 
-            setTimeout(() => {
-                clearInterval(fireworksTimer);
-            }, durationMs);
-
-            // Stop the render loop shortly after the last particles fade
+            setTimeout(() => clearInterval(fireworksTimer), durationMs);
             setTimeout(() => {
                 cancelAnimationFrame(fireworksFrameId);
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -587,7 +585,6 @@
 
         function createRainbows(count) {
             const rainbows = [];
-
             for (let i = 0; i < count; i++) {
                 const rainbow = document.createElement('div');
                 rainbow.className = 'rainbow-emoji';
@@ -610,17 +607,14 @@
                     r.x += r.vx;
                     r.y += r.vy;
                     r.rotation += 2;
-
                     if (r.x <= 0 || r.x >= window.innerWidth - 80) r.vx *= -1;
                     if (r.y <= 0 || r.y >= window.innerHeight - 80) r.vy *= -1;
-
                     r.el.style.transform = `translate(${r.x}px, ${r.y}px) rotate(${r.rotation}deg)`;
                 });
                 bounceId = requestAnimationFrame(bounce);
             }
             bounce();
 
-            // Clean up after the celebration winds down
             setTimeout(() => {
                 cancelAnimationFrame(bounceId);
                 rainbows.forEach(r => {
@@ -639,11 +633,9 @@
 
         document.getElementById('startButton').addEventListener('click', startAnimation);
 
-        // Show the name that will be displayed
         document.addEventListener('DOMContentLoaded', () => {
             const userName = extractNameFromURL();
             const startScreen = document.getElementById('startScreen');
-            
             if (userName !== 'David') {
                 const namePreview = document.createElement('p');
                 namePreview.style.cssText = 'font-size: 1rem; margin-top: 1rem; opacity: 0.6; font-style: italic;';
@@ -652,7 +644,6 @@
             }
         });
 
-        // Handle keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.key === ' ' || e.key === 'Enter') {
                 e.preventDefault();
@@ -660,7 +651,6 @@
             }
         });
 
-        // Keep the fireworks canvas crisp if the window is resized
         window.addEventListener('resize', () => {
             const canvas = document.getElementById('fireworksCanvas');
             if (canvas) {
