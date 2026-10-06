@@ -297,7 +297,7 @@
             100% { transform: translate(0, -110vh) rotate(0deg); opacity: 0; }
         }
 
-        /* Prime Day: jeff.png bouncing like a DVD screensaver */
+        /* Prime Day: jeff.png swarm (size and position are set from JS) */
         .jeff-img {
             position: fixed;
             top: 0;
@@ -655,49 +655,114 @@
             }
         }
 
-        // ===== Prime Day: DVD-screensaver bouncing jeff.png =====
+        // ===== Prime Day: the Jeff swarm =====
         // jeff.png must sit next to index.html in the repo.
+        // Every Jeff bounces around like a DVD logo and spins at its own rate.
+        // Each time a Jeff reaches a corner, a new Jeff spawns there, until the
+        // window is full.
+        const JEFF_CORNER_ZONE = 100;  // px: a wall hit this close to a corner counts as a corner hit
+        const JEFF_COOLDOWN_MS = 1200; // one Jeff can't trigger back-to-back spawns faster than this
+        const JEFF_FILL = 2.5;         // "full" = total Jeff area is this multiple of the window area
+        const JEFF_MAX = 150;          // hard ceiling so slow devices never choke
+
         function startJeff() {
-            const img = document.createElement('img');
-            img.className = 'jeff-img';
-            img.alt = '';
-            img.src = 'jeff.png';
-
-            img.onerror = () => {
+            const probe = new Image();
+            probe.onerror = () => {
                 console.log('jeff.png not found - is it in the same folder as index.html?');
-                img.remove();
             };
+            probe.onload = () => runJeffSwarm(probe.naturalWidth, probe.naturalHeight);
+            probe.src = 'jeff.png';
+        }
 
-            img.onload = () => {
-                let x = Math.random() * Math.max(window.innerWidth - img.offsetWidth, 1);
-                let y = Math.random() * Math.max(window.innerHeight - img.offsetHeight, 1);
-                let vx = (Math.random() > 0.5 ? 1 : -1) * 3;
-                let vy = (Math.random() > 0.5 ? 1 : -1) * 2.5;
+        function runJeffSwarm(naturalW, naturalH) {
+            // Same size rule as the old CSS: 18vw, clamped to 90-180px
+            const w = Math.min(180, Math.max(90, window.innerWidth * 0.18));
+            const h = w * (naturalH / naturalW);
 
-                img.style.opacity = '1';
+            const cap = Math.min(
+                JEFF_MAX,
+                Math.max(1, Math.ceil((window.innerWidth * window.innerHeight) / (w * h) * JEFF_FILL))
+            );
 
-                function bounce() {
-                    const w = img.offsetWidth;
-                    const h = img.offsetHeight;
-                    const maxX = Math.max(window.innerWidth - w, 0);
-                    const maxY = Math.max(window.innerHeight - h, 0);
+            const rand = (min, max) => min + Math.random() * (max - min);
+            const randSign = () => (Math.random() > 0.5 ? 1 : -1);
+            const jeffs = [];
 
-                    x += vx;
-                    y += vy;
+            function addJeff(x, y, vx, vy) {
+                const el = document.createElement('img');
+                el.className = 'jeff-img';
+                el.alt = '';
+                el.src = 'jeff.png';
+                el.style.width = w + 'px';
+                el.style.height = h + 'px';
+                document.body.appendChild(el);
+                el.getBoundingClientRect(); // flush styles so the fade-in transition runs
+                el.style.opacity = '1';
 
-                    if (x <= 0) { x = 0; vx = Math.abs(vx); }
-                    else if (x >= maxX) { x = maxX; vx = -Math.abs(vx); }
+                jeffs.push({
+                    el, x, y, vx, vy,
+                    angle: rand(0, 360),
+                    spin: randSign() * rand(40, 280), // degrees per second, unique per Jeff
+                    lastSpawn: 0
+                });
+            }
 
-                    if (y <= 0) { y = 0; vy = Math.abs(vy); }
-                    else if (y >= maxY) { y = maxY; vy = -Math.abs(vy); }
+            // First Jeff starts somewhere random
+            addJeff(
+                rand(0, Math.max(window.innerWidth - w, 1)),
+                rand(0, Math.max(window.innerHeight - h, 1)),
+                randSign() * rand(120, 240),
+                randSign() * rand(100, 220)
+            );
 
-                    img.style.transform = `translate(${x}px, ${y}px)`;
-                    requestAnimationFrame(bounce);
+            let last = performance.now();
+
+            function frame(now) {
+                const dt = Math.min((now - last) / 1000, 0.05); // seconds, clamped for tab-switches
+                last = now;
+
+                const maxX = Math.max(window.innerWidth - w, 0);
+                const maxY = Math.max(window.innerHeight - h, 0);
+                const spawns = [];
+
+                for (const j of jeffs) {
+                    j.x += j.vx * dt;
+                    j.y += j.vy * dt;
+                    j.angle += j.spin * dt;
+
+                    let hit = false;
+                    if (j.x <= 0) { j.x = 0; j.vx = Math.abs(j.vx); hit = true; }
+                    else if (j.x >= maxX) { j.x = maxX; j.vx = -Math.abs(j.vx); hit = true; }
+
+                    if (j.y <= 0) { j.y = 0; j.vy = Math.abs(j.vy); hit = true; }
+                    else if (j.y >= maxY) { j.y = maxY; j.vy = -Math.abs(j.vy); hit = true; }
+
+                    // Corner hit = bouncing off a wall while within the corner zone of the other wall
+                    if (hit && jeffs.length + spawns.length < cap && now - j.lastSpawn > JEFF_COOLDOWN_MS) {
+                        const left = j.x <= JEFF_CORNER_ZONE;
+                        const right = j.x >= maxX - JEFF_CORNER_ZONE;
+                        const top = j.y <= JEFF_CORNER_ZONE;
+                        const bottom = j.y >= maxY - JEFF_CORNER_ZONE;
+
+                        if ((left || right) && (top || bottom)) {
+                            j.lastSpawn = now;
+                            spawns.push({
+                                x: left ? 0 : maxX,
+                                y: top ? 0 : maxY,
+                                vx: (left ? 1 : -1) * rand(120, 240),
+                                vy: (top ? 1 : -1) * rand(100, 220)
+                            });
+                        }
+                    }
+
+                    j.el.style.transform = `translate(${j.x}px, ${j.y}px) rotate(${j.angle}deg)`;
                 }
-                bounce();
-            };
 
-            document.body.appendChild(img);
+                spawns.forEach(s => addJeff(s.x, s.y, s.vx, s.vy));
+                requestAnimationFrame(frame);
+            }
+
+            requestAnimationFrame(frame);
         }
 
         // ===== DeepDream hallucination + screen shake =====
