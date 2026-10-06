@@ -679,6 +679,12 @@
         // Every time a Jeff hits a wall, a new Jeff spawns on that wall.
         // Jeffs bounce off each other and off the on-screen text, so the swarm
         // stops growing once the window is as full as it physically can be.
+        // If a Jeff ever hits a corner almost perfectly, every Jeff freezes in
+        // place, spins on its own axis, and strobes colors for a few seconds.
+        const JEFF_PERFECT_PX = 6;           // a wall hit this close to the adjacent wall counts as a perfect corner
+        const JEFF_PARTY_MS = 6000;          // how long the strobe-and-spin party lasts
+        const JEFF_PARTY_COOLDOWN_MS = 15000; // quiet time after a party before another can start
+        const JEFF_STROBE_MS = 90;           // how often the colors change during the party
         const JEFF_COOLDOWN_MS = 300;  // a single Jeff can't spawn twice within this many ms
         const JEFF_FILL = 0.55;        // "full" = Jeff collision circles cover this fraction of the window
         const JEFF_MAX = 150;          // hard ceiling so slow devices never choke
@@ -739,7 +745,7 @@
                 return true;
             }
 
-            function addJeff(x, y, vx, vy) {
+            function addJeff(x, y, vx, vy, spawned) {
                 const el = document.createElement('img');
                 el.className = 'jeff-img';
                 el.alt = '';
@@ -754,7 +760,8 @@
                     el, x, y, vx, vy,
                     angle: rand(0, 360),
                     spin: randSign() * rand(40, 280), // degrees per second, unique per Jeff
-                    lastSpawn: 0
+                    lastSpawn: 0,
+                    born: spawned ? performance.now() : -Infinity
                 };
                 jeff.el.style.transform = `translate(${x}px, ${y}px) rotate(${jeff.angle}deg)`;
                 jeffs.push(jeff);
@@ -809,9 +816,52 @@
 
             let last = performance.now();
 
+            // ----- Perfect-corner party: freeze, spin on axis, strobe colors -----
+            let party = null;          // { until, nextStrobe } while a party is running
+            let partyLockUntil = 0;    // no new party before this time
+
+            function strobeColors() {
+                for (const j of jeffs) {
+                    const hue = Math.floor(rand(0, 360));
+                    j.el.style.filter =
+                        `hue-rotate(${hue}deg) saturate(2.4) brightness(1.2) drop-shadow(0 0 14px hsl(${hue}, 100%, 60%))`;
+                }
+            }
+
+            function startParty(now) {
+                party = { until: now + JEFF_PARTY_MS, nextStrobe: now + JEFF_STROBE_MS };
+                partyLockUntil = now + JEFF_PARTY_MS + JEFF_PARTY_COOLDOWN_MS;
+                // Each Jeff keeps its spin direction but gets its own much faster rate
+                for (const j of jeffs) j.partySpin = (j.spin < 0 ? -1 : 1) * rand(360, 900);
+                document.body.classList.add('jeff-party');
+                strobeColors();
+            }
+
+            function runParty(now, dt) {
+                for (const j of jeffs) {
+                    j.angle += j.partySpin * dt; // spin in place, no movement
+                    j.el.style.transform = `translate(${j.x}px, ${j.y}px) rotate(${j.angle}deg)`;
+                }
+                if (now >= party.nextStrobe) {
+                    party.nextStrobe = now + JEFF_STROBE_MS;
+                    strobeColors();
+                }
+                if (now >= party.until) {
+                    for (const j of jeffs) j.el.style.filter = '';
+                    document.body.classList.remove('jeff-party');
+                    party = null;
+                }
+            }
+
             function frame(now) {
                 const dt = Math.min((now - last) / 1000, 0.05); // seconds, clamped for tab-switches
                 last = now;
+
+                if (party) {
+                    runParty(now, dt);
+                    requestAnimationFrame(frame);
+                    return;
+                }
 
                 const W = window.innerWidth;
                 const H = window.innerHeight;
@@ -819,6 +869,7 @@
                 const maxY = Math.max(H - h, 0);
                 const obstacles = readObstacles(); // read before any writes this frame
                 const hits = [];
+                let perfectCorner = false;
 
                 // 1. Move, spin, and bounce off the window edges
                 for (const j of jeffs) {
@@ -832,6 +883,13 @@
 
                     if (j.y <= 0) { if (j.vy < 0) { wall = wall || 'top'; j.vy = -j.vy; } j.y = 0; }
                     else if (j.y >= maxY) { if (j.vy > 0) { wall = wall || 'bottom'; j.vy = -j.vy; } j.y = maxY; }
+
+                    // Perfect corner: bounced off one wall while within a few px of the adjacent wall too
+                    if (wall && now - j.born > 1000
+                        && Math.min(j.x, maxX - j.x) <= JEFF_PERFECT_PX
+                        && Math.min(j.y, maxY - j.y) <= JEFF_PERFECT_PX) {
+                        perfectCorner = true;
+                    }
 
                     if (wall && now - j.lastSpawn > JEFF_COOLDOWN_MS) hits.push({ wall, j });
                 }
@@ -916,9 +974,12 @@
                     const spot = findSpawnSpot(wall, j, obstacles, W, H);
                     if (!spot) continue;
                     const [vx, vy] = spawnVelocity(wall);
-                    addJeff(spot.cx - w / 2, spot.cy - h / 2, vx, vy);
+                    addJeff(spot.cx - w / 2, spot.cy - h / 2, vx, vy, true);
                     j.lastSpawn = now;
                 }
+
+                // 6. A near-perfect corner hit starts the party
+                if (perfectCorner && now >= partyLockUntil) startParty(now);
 
                 requestAnimationFrame(frame);
             }
