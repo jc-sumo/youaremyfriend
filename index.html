@@ -658,12 +658,15 @@
         // ===== Prime Day: the Jeff swarm =====
         // jeff.png must sit next to index.html in the repo.
         // Every Jeff bounces around like a DVD logo and spins at its own rate.
-        // Each time a Jeff reaches a corner, a new Jeff spawns there, until the
-        // window is full.
-        const JEFF_CORNER_ZONE = 100;  // px: a wall hit this close to a corner counts as a corner hit
-        const JEFF_COOLDOWN_MS = 1200; // one Jeff can't trigger back-to-back spawns faster than this
-        const JEFF_FILL = 2.5;         // "full" = total Jeff area is this multiple of the window area
+        // Every time a Jeff hits a wall, a new Jeff spawns on that wall.
+        // Jeffs bounce off each other and off the on-screen text, so the swarm
+        // stops growing once the window is as full as it physically can be.
+        const JEFF_COOLDOWN_MS = 300;  // a single Jeff can't spawn twice within this many ms
+        const JEFF_FILL = 0.55;        // "full" = Jeff collision circles cover this fraction of the window
         const JEFF_MAX = 150;          // hard ceiling so slow devices never choke
+        const JEFF_RADIUS = 0.45;      // collision radius as a fraction of Jeff's width
+        const JEFF_MIN_SPEED = 80;     // px/s: collisions never leave a Jeff stuck almost still
+        const JEFF_TEXT_IDS = ['nameText', 'text5', 'birthdayText']; // text Jeffs bounce off
 
         function startJeff() {
             const probe = new Image();
@@ -678,15 +681,45 @@
             // Same size rule as the old CSS: 18vw, clamped to 90-180px
             const w = Math.min(180, Math.max(90, window.innerWidth * 0.18));
             const h = w * (naturalH / naturalW);
+            const r = w * JEFF_RADIUS;
 
+            // Circles can't pack perfectly, so "full" is a fraction of the window area
             const cap = Math.min(
                 JEFF_MAX,
-                Math.max(1, Math.ceil((window.innerWidth * window.innerHeight) / (w * h) * JEFF_FILL))
+                Math.max(1, Math.floor(JEFF_FILL * window.innerWidth * window.innerHeight / (Math.PI * r * r)))
             );
 
             const rand = (min, max) => min + Math.random() * (max - min);
             const randSign = () => (Math.random() > 0.5 ? 1 : -1);
+            const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+            const textEls = JEFF_TEXT_IDS.map(id => document.getElementById(id)).filter(Boolean);
             const jeffs = [];
+
+            // Rectangles of the text that is currently visible on screen
+            function readObstacles() {
+                const out = [];
+                for (const el of textEls) {
+                    if (parseFloat(getComputedStyle(el).opacity) < 0.2) continue;
+                    const b = el.getBoundingClientRect();
+                    out.push({ l: b.left, t: b.top, r: b.right, b: b.bottom });
+                }
+                return out;
+            }
+
+            // Is there room for a Jeff circle centered here?
+            function isFree(cx, cy, obstacles) {
+                for (const j of jeffs) {
+                    const dx = j.x + w / 2 - cx;
+                    const dy = j.y + h / 2 - cy;
+                    if (dx * dx + dy * dy < (2 * r + 2) * (2 * r + 2)) return false;
+                }
+                for (const o of obstacles) {
+                    const dx = cx - clamp(cx, o.l, o.r);
+                    const dy = cy - clamp(cy, o.t, o.b);
+                    if (dx * dx + dy * dy < (r + 2) * (r + 2)) return false;
+                }
+                return true;
+            }
 
             function addJeff(x, y, vx, vy) {
                 const el = document.createElement('img');
@@ -699,21 +732,62 @@
                 el.getBoundingClientRect(); // flush styles so the fade-in transition runs
                 el.style.opacity = '1';
 
-                jeffs.push({
+                const jeff = {
                     el, x, y, vx, vy,
                     angle: rand(0, 360),
                     spin: randSign() * rand(40, 280), // degrees per second, unique per Jeff
                     lastSpawn: 0
-                });
+                };
+                jeff.el.style.transform = `translate(${x}px, ${y}px) rotate(${jeff.angle}deg)`;
+                jeffs.push(jeff);
             }
 
-            // First Jeff starts somewhere random
-            addJeff(
-                rand(0, Math.max(window.innerWidth - w, 1)),
-                rand(0, Math.max(window.innerHeight - h, 1)),
-                randSign() * rand(120, 240),
-                randSign() * rand(100, 220)
-            );
+            // Find a free spot on the wall that was just hit (next to the Jeff that hit it)
+            function findSpawnSpot(wall, parent, obstacles, W, H) {
+                const vertical = wall === 'left' || wall === 'right';
+                const half = vertical ? h / 2 : w / 2;
+                const len = vertical ? H : W;
+                const along = vertical ? parent.y + h / 2 : parent.x + w / 2;
+                const step = 2 * r + 8;
+
+                const candidates = [along + step, along - step, along + 2 * step, along - 2 * step];
+                for (let i = 0; i < 24; i++) candidates.push(rand(half, Math.max(len - half, half)));
+
+                for (const a of candidates) {
+                    const pos = clamp(a, half, Math.max(len - half, half));
+                    let cx, cy;
+                    if (wall === 'left') { cx = w / 2; cy = pos; }
+                    else if (wall === 'right') { cx = W - w / 2; cy = pos; }
+                    else if (wall === 'top') { cx = pos; cy = h / 2; }
+                    else { cx = pos; cy = H - h / 2; }
+
+                    if (isFree(cx, cy, obstacles)) return { cx, cy };
+                }
+                return null;
+            }
+
+            function spawnVelocity(wall) {
+                const away = rand(120, 240);
+                const along = randSign() * rand(60, 200);
+                if (wall === 'left') return [away, along];
+                if (wall === 'right') return [-away, along];
+                if (wall === 'top') return [along, away];
+                return [along, -away];
+            }
+
+            // First Jeff starts somewhere random that isn't on top of the text
+            {
+                const obstacles = readObstacles();
+                const W = window.innerWidth;
+                const H = window.innerHeight;
+                let cx = W / 2, cy = H / 2;
+                for (let i = 0; i < 40; i++) {
+                    const tx = rand(w / 2, Math.max(W - w / 2, w / 2));
+                    const ty = rand(h / 2, Math.max(H - h / 2, h / 2));
+                    if (isFree(tx, ty, obstacles)) { cx = tx; cy = ty; break; }
+                }
+                addJeff(cx - w / 2, cy - h / 2, randSign() * rand(120, 240), randSign() * rand(100, 220));
+            }
 
             let last = performance.now();
 
@@ -721,44 +795,113 @@
                 const dt = Math.min((now - last) / 1000, 0.05); // seconds, clamped for tab-switches
                 last = now;
 
-                const maxX = Math.max(window.innerWidth - w, 0);
-                const maxY = Math.max(window.innerHeight - h, 0);
-                const spawns = [];
+                const W = window.innerWidth;
+                const H = window.innerHeight;
+                const maxX = Math.max(W - w, 0);
+                const maxY = Math.max(H - h, 0);
+                const obstacles = readObstacles(); // read before any writes this frame
+                const hits = [];
 
+                // 1. Move, spin, and bounce off the window edges
                 for (const j of jeffs) {
                     j.x += j.vx * dt;
                     j.y += j.vy * dt;
                     j.angle += j.spin * dt;
 
-                    let hit = false;
-                    if (j.x <= 0) { j.x = 0; j.vx = Math.abs(j.vx); hit = true; }
-                    else if (j.x >= maxX) { j.x = maxX; j.vx = -Math.abs(j.vx); hit = true; }
+                    let wall = null;
+                    if (j.x <= 0) { if (j.vx < 0) { wall = 'left'; j.vx = -j.vx; } j.x = 0; }
+                    else if (j.x >= maxX) { if (j.vx > 0) { wall = 'right'; j.vx = -j.vx; } j.x = maxX; }
 
-                    if (j.y <= 0) { j.y = 0; j.vy = Math.abs(j.vy); hit = true; }
-                    else if (j.y >= maxY) { j.y = maxY; j.vy = -Math.abs(j.vy); hit = true; }
+                    if (j.y <= 0) { if (j.vy < 0) { wall = wall || 'top'; j.vy = -j.vy; } j.y = 0; }
+                    else if (j.y >= maxY) { if (j.vy > 0) { wall = wall || 'bottom'; j.vy = -j.vy; } j.y = maxY; }
 
-                    // Corner hit = bouncing off a wall while within the corner zone of the other wall
-                    if (hit && jeffs.length + spawns.length < cap && now - j.lastSpawn > JEFF_COOLDOWN_MS) {
-                        const left = j.x <= JEFF_CORNER_ZONE;
-                        const right = j.x >= maxX - JEFF_CORNER_ZONE;
-                        const top = j.y <= JEFF_CORNER_ZONE;
-                        const bottom = j.y >= maxY - JEFF_CORNER_ZONE;
+                    if (wall && now - j.lastSpawn > JEFF_COOLDOWN_MS) hits.push({ wall, j });
+                }
 
-                        if ((left || right) && (top || bottom)) {
-                            j.lastSpawn = now;
-                            spawns.push({
-                                x: left ? 0 : maxX,
-                                y: top ? 0 : maxY,
-                                vx: (left ? 1 : -1) * rand(120, 240),
-                                vy: (top ? 1 : -1) * rand(100, 220)
-                            });
+                // 2. Jeff vs Jeff: equal-mass elastic bounce (two relaxation passes)
+                for (let pass = 0; pass < 2; pass++) {
+                    for (let a = 0; a < jeffs.length; a++) {
+                        for (let b = a + 1; b < jeffs.length; b++) {
+                            const A = jeffs[a];
+                            const B = jeffs[b];
+                            let dx = B.x - A.x;
+                            let dy = B.y - A.y;
+                            const distSq = dx * dx + dy * dy;
+                            if (distSq >= 4 * r * r) continue;
+
+                            let dist = Math.sqrt(distSq);
+                            if (dist < 0.001) { dx = 1; dy = 0; dist = 1; }
+                            const nx = dx / dist;
+                            const ny = dy / dist;
+
+                            const push = (2 * r - dist) / 2;
+                            A.x -= nx * push; A.y -= ny * push;
+                            B.x += nx * push; B.y += ny * push;
+
+                            const vn = (B.vx - A.vx) * nx + (B.vy - A.vy) * ny;
+                            if (vn < 0) {
+                                A.vx += vn * nx; A.vy += vn * ny;
+                                B.vx -= vn * nx; B.vy -= vn * ny;
+                            }
                         }
                     }
+                }
 
+                // 3. Jeff vs text, then keep everyone inside the window
+                for (const j of jeffs) {
+                    for (const o of obstacles) {
+                        const cx = j.x + w / 2;
+                        const cy = j.y + h / 2;
+                        const dx = cx - clamp(cx, o.l, o.r);
+                        const dy = cy - clamp(cy, o.t, o.b);
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        if (dist >= r) continue;
+
+                        let nx, ny, push;
+                        if (dist > 0.0001) {
+                            nx = dx / dist; ny = dy / dist; push = r - dist;
+                        } else {
+                            // Center is inside the text box: leave through the nearest side
+                            const dl = cx - o.l, dr = o.r - cx, dt2 = cy - o.t, db = o.b - cy;
+                            const m = Math.min(dl, dr, dt2, db);
+                            if (m === dl) { nx = -1; ny = 0; push = dl + r; }
+                            else if (m === dr) { nx = 1; ny = 0; push = dr + r; }
+                            else if (m === dt2) { nx = 0; ny = -1; push = dt2 + r; }
+                            else { nx = 0; ny = 1; push = db + r; }
+                        }
+                        j.x += nx * push;
+                        j.y += ny * push;
+
+                        const vn = j.vx * nx + j.vy * ny;
+                        if (vn < 0) { j.vx -= 2 * vn * nx; j.vy -= 2 * vn * ny; }
+                    }
+
+                    j.x = clamp(j.x, 0, maxX);
+                    j.y = clamp(j.y, 0, maxY);
+
+                    const speed = Math.hypot(j.vx, j.vy);
+                    if (speed < JEFF_MIN_SPEED) {
+                        const k = speed > 0.001 ? JEFF_MIN_SPEED / speed : 0;
+                        j.vx = k ? j.vx * k : randSign() * JEFF_MIN_SPEED;
+                        j.vy = k ? j.vy * k : randSign() * JEFF_MIN_SPEED;
+                    }
+                }
+
+                // 4. Draw
+                for (const j of jeffs) {
                     j.el.style.transform = `translate(${j.x}px, ${j.y}px) rotate(${j.angle}deg)`;
                 }
 
-                spawns.forEach(s => addJeff(s.x, s.y, s.vx, s.vy));
+                // 5. Every wall hit spawns a new Jeff on that wall (if there's room)
+                for (const { wall, j } of hits) {
+                    if (jeffs.length >= cap) break;
+                    const spot = findSpawnSpot(wall, j, obstacles, W, H);
+                    if (!spot) continue;
+                    const [vx, vy] = spawnVelocity(wall);
+                    addJeff(spot.cx - w / 2, spot.cy - h / 2, vx, vy);
+                    j.lastSpawn = now;
+                }
+
                 requestAnimationFrame(frame);
             }
 
