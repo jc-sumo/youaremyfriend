@@ -209,6 +209,18 @@
             }
         }
 
+        /* The name slides up and shrinks slightly to make room for "You Are My Friend" */
+        @keyframes nameMoveUp {
+            from {
+                opacity: 1;
+                transform: scale(1) translateY(0);
+            }
+            to {
+                opacity: 1;
+                transform: scale(0.8) translateY(-26vh);
+            }
+        }
+
         @keyframes confettiFall {
             0% {
                 transform: translateY(-100vh) rotate(0deg);
@@ -567,6 +579,12 @@
             setTimeout(() => {
                 triggerDeepDream(2400);
             }, 8500);
+
+            // Name slides up just before "You Are My Friend" lands, so the two
+            // lines stack instead of overlapping
+            setTimeout(() => {
+                document.getElementById('nameText').style.animation = 'nameMoveUp 1.2s ease-in-out forwards';
+            }, 10900);
 
             // Big finale: punch-shake, fireworks, confetti burst, and flying
             // rainbows when "You Are My Friend" lands
